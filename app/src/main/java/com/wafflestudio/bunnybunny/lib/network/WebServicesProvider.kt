@@ -22,18 +22,22 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 
-class WebServicesProvider @Inject constructor(
-    private val messageStorage: MessageStorage,
+interface WebSocketManager {
+    fun createWebSocket(channelId: Long)
+    fun disposeWebSocket()
+    fun isWebSocketAvailable(): Boolean
+
+    fun sendMessage(message: String)
+}
+
+class WebSocketManagerImpl @Inject constructor(
     private val sharedPreference: SharedPreferences,
-    @Named("WebSocketOkHttpClient") private val okHttpClient: OkHttpClient,
+    private val okHttpClient: OkHttpClient,
     private val webSocketListener: BunnyWebSocketListener,
-    private val userWebsocketListener: BunnyUserWebSocketListener
-) {
+): WebSocketManager {
+    var webSocket: WebSocket? = null
 
-    private val _messageState = MutableStateFlow("")
-    val messageState : StateFlow<String> = _messageState.asStateFlow()
-
-    fun connectChannel(channelId: Long): WebSocket {
+    override fun createWebSocket(channelId: Long) {
         val address = "banibani.shop"
         val token = sharedPreference.getString("originalToken", "") // token 값 가져옴
         val webSocketUrl =
@@ -42,8 +46,40 @@ class WebServicesProvider @Inject constructor(
         val request = Request.Builder()
             .url(webSocketUrl)
             .build()
+        webSocket = okHttpClient.newWebSocket(request, webSocketListener)
+    }
 
-        return okHttpClient.newWebSocket(request, webSocketListener)
+    override fun disposeWebSocket() {
+        webSocket?.close(1000, "Disconnected by client")
+        webSocket = null
+    }
+
+    override fun isWebSocketAvailable(): Boolean {
+        return webSocket != null
+    }
+
+    override fun sendMessage(message: String) {
+        webSocket?.send(message)
+    }
+}
+
+
+class WebServicesProvider @Inject constructor(
+    private val messageStorage: MessageStorage,
+    private val sharedPreference: SharedPreferences,
+    @Named("WebSocketOkHttpClient") private val okHttpClient: OkHttpClient,
+    private val webSocketListener: BunnyWebSocketListener,
+    private val userWebsocketListener: BunnyUserWebSocketListener
+) {
+
+    val webSocketManager = WebSocketManagerImpl(sharedPreference, okHttpClient, webSocketListener)
+
+
+    private val _messageState = MutableStateFlow("")
+    val messageState : StateFlow<String> = _messageState.asStateFlow()
+
+    fun connectChannel(channelId: Long) {
+        webSocketManager.createWebSocket(channelId)
     }
 
     fun connectUser(): WebSocket {
@@ -67,10 +103,10 @@ class WebServicesProvider @Inject constructor(
     }
 
 
-    fun sendRecentMessageRequest(channelWebSocket: WebSocket, cur: Int)  {
+    fun sendRecentMessageRequest(cur: Int)  {
         // RECENT_MESSAGE 메시지 포맷 작성
         val formattedMessage = "RECENT_MESSAGE\ncur:$cur\n"
-        channelWebSocket.send(formattedMessage)
+        webSocketManager.sendMessage(formattedMessage)
     }
 
     fun sendTextMessage(channelWebSocket: WebSocket, body: String) {

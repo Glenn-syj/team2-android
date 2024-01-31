@@ -1,22 +1,10 @@
 package com.wafflestudio.bunnybunny.viewModel
 
-import android.app.Activity
-import android.content.SharedPreferences
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.util.Log
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.wafflestudio.bunnybunny.data.example.AreaSearchResponse
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -26,14 +14,11 @@ import com.wafflestudio.bunnybunny.SampleData
 import com.wafflestudio.bunnybunny.SampleData.DefaultGoodsPostContentSample
 import com.wafflestudio.bunnybunny.SampleData.DefaultGoodsPostListSample
 import com.wafflestudio.bunnybunny.SampleData.DefaultUserInfo
-import com.wafflestudio.bunnybunny.SampleData.GoodsPostContentSample
-import com.wafflestudio.bunnybunny.SampleData.GoodsPostListSample
-import com.wafflestudio.bunnybunny.data.example.GoodsPostPagingSource
 import com.wafflestudio.bunnybunny.data.example.EditProfileRequest
+import com.wafflestudio.bunnybunny.data.example.GoodsPostPagingSource
 import com.wafflestudio.bunnybunny.data.example.LoginRequest
 import com.wafflestudio.bunnybunny.data.example.LoginResponse
 import com.wafflestudio.bunnybunny.data.example.PrefRepository
-import com.wafflestudio.bunnybunny.data.example.RefAreaId
 import com.wafflestudio.bunnybunny.data.example.SignupRequest
 import com.wafflestudio.bunnybunny.data.example.SignupResponse
 import com.wafflestudio.bunnybunny.data.example.SimpleAreaData
@@ -43,18 +28,12 @@ import com.wafflestudio.bunnybunny.data.example.UserInfo
 import com.wafflestudio.bunnybunny.lib.network.api.BunnyApi
 import com.wafflestudio.bunnybunny.lib.network.dto.CommunityPostList
 import com.wafflestudio.bunnybunny.lib.network.dto.GoodsPostContent
-import com.wafflestudio.bunnybunny.lib.network.dto.GoodsPostList
 import com.wafflestudio.bunnybunny.lib.network.dto.GoodsPostPreview
 import com.wafflestudio.bunnybunny.lib.network.dto.SocialLoginResponse
 import com.wafflestudio.bunnybunny.lib.network.dto.SubmitPostRequest
 import com.wafflestudio.bunnybunny.lib.network.dto.postImagesResponse
 import com.wafflestudio.bunnybunny.model.ToggleImageItem
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -73,30 +52,23 @@ import retrofit2.HttpException
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
-import javax.inject.Singleton
-
-
-
-
-
-
-
-
 
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val api: BunnyApi,
     private val prefRepository: PrefRepository,
-): ViewModel() {
+) : ViewModel() {
 
 
-    val querySignal = MutableStateFlow(GoodsPostPagingSource(
-        api = api,
-        token = "",
-        distance = 0,
-        areaId = 0,
-    ))
+    val querySignal = MutableStateFlow(
+        GoodsPostPagingSource(
+            api = api,
+            token = "",
+            distance = 0,
+            areaId = 0,
+        )
+    )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val goodsPostList = querySignal.flatMapLatest {
@@ -109,11 +81,12 @@ class MainViewModel @Inject constructor(
     )
 
     suspend fun updateGoodsPostList(
-        cur:Long?,
-        seed:Int?,
-        distance:Int,
-        areaId:Int,
-        count:Int,) {
+        cur: Long?,
+        seed: Int?,
+        distance: Int,
+        areaId: Int,
+        count: Int,
+    ) {
         querySignal.emit(
             GoodsPostPagingSource(
                 api = api,
@@ -140,29 +113,33 @@ class MainViewModel @Inject constructor(
 
     fun updateGalleryImages(newContent: List<ToggleImageItem>) {
         _galleryImages.value = newContent
-        Log.d("aaaa",galleryImages.value.toString())
-        Log.d("aaaa",selectedImages.value.toString())
+        Log.d("aaaa", galleryImages.value.toString())
+        Log.d("aaaa", selectedImages.value.toString())
 
     }
 
     private val _selectedImages = MutableStateFlow(listOf<Int>())
     val selectedImages: StateFlow<List<Int>> = _selectedImages.asStateFlow()
     fun updateSelectedImages(newContent: List<Int>) {
-        if(newContent.size+uploadImages.value.size>10) return
+        if (newContent.size + uploadImages.value.size > 10) return
         _selectedImages.value = newContent
-        val updateList=galleryImages.value.toMutableList()
-        updateList.forEachIndexed{imageIndex,item->
-            updateList[imageIndex]=item.copy(
+        val updateList = galleryImages.value.toMutableList()
+        updateList.forEachIndexed { imageIndex, item ->
+            updateList[imageIndex] = item.copy(
                 isSelected = selectedImages.value.contains(imageIndex),
-                selectedOrder =if(selectedImages.value.contains(imageIndex)) selectedImages.value.indexOf(imageIndex)+1 else null )
+                selectedOrder = if (selectedImages.value.contains(imageIndex)) selectedImages.value.indexOf(
+                    imageIndex
+                ) + 1 else null
+            )
         }
         updateGalleryImages(updateList)
         //Log.d("aaaa","update gallery called")
     }
+
     private val _uploadImages = MutableStateFlow(listOf<Uri>())
     val uploadImages: StateFlow<List<Uri>> = _uploadImages.asStateFlow()
     fun updateUploadImages(newContent: List<Uri>) {
-        _uploadImages.value=newContent
+        _uploadImages.value = newContent
         //Log.d("aaaa","update gallery called")
     }
 
@@ -177,37 +154,40 @@ class MainViewModel @Inject constructor(
     // 상태를 업데이트하는 함수입니다.
 
 
-
     private val _areaDetails: MutableStateFlow<List<SimpleAreaData>> = MutableStateFlow(listOf())
     val areaDetails: StateFlow<List<SimpleAreaData>> = _areaDetails.asStateFlow()
 
     private val _userInfo: MutableStateFlow<UserInfo> = MutableStateFlow(DefaultUserInfo)
-    val userInfo : StateFlow<UserInfo> = _userInfo.asStateFlow()
+    val userInfo: StateFlow<UserInfo> = _userInfo.asStateFlow()
 
-    private val _currentRefAreaId: MutableStateFlow<MutableList<Int>> = MutableStateFlow(getRefAreaId().toMutableList())
-    val currentRefAreaId : StateFlow<MutableList<Int>> = _currentRefAreaId.asStateFlow()
+    private val _currentRefAreaId: MutableStateFlow<MutableList<Int>> =
+        MutableStateFlow(getRefAreaId().toMutableList())
+    val currentRefAreaId: StateFlow<MutableList<Int>> = _currentRefAreaId.asStateFlow()
 
-    suspend fun getUserInfo(){
+    suspend fun getUserInfo() {
         _userInfo.value = api.getUserInfo(getTokenHeader()!!)
     }
-    suspend fun editProfile(request: EditProfileRequest){
+
+    suspend fun editProfile(request: EditProfileRequest) {
         _userInfo.value = api.putUserInfo(getTokenHeader()!!, request)
     }
+
     companion object {}
-    fun getTokenHeader():String?{
+
+    fun getTokenHeader(): String? {
         //Log.d("aaaa", "tag:$accessToken")
         return prefRepository.getPref("token")?.let {
             "Bearer $it"
         } ?: ""
     }
 
-    fun getOriginalToken():String?{
+    fun getOriginalToken(): String? {
         //Log.d("aaaa", "tag:$accessToken")
         return prefRepository.getPref("token")
     }
 
     fun setToken(token: String) {
-        prefRepository.setPref("token",token)
+        prefRepository.setPref("token", token)
     }
 
     fun getRefAreaId(): List<Int> {
@@ -221,8 +201,8 @@ class MainViewModel @Inject constructor(
         refAreaId.forEach {
             builder.append("$it ")
         }
-        Log.d("aaaaa",builder.toString())
-        prefRepository.setPref("refAreaId",builder.toString())
+        Log.d("aaaaa", builder.toString())
+        prefRepository.setPref("refAreaId", builder.toString())
     }
 
     fun swapRefAreaIdValues() {
@@ -246,7 +226,7 @@ class MainViewModel @Inject constructor(
         prefRepository.setPref("SelectedTabIndex",index.toString())
     }*/
 
-    fun getGoodsPostList(item:GoodsPostPagingSource): Flow<PagingData<GoodsPostPreview>> {
+    fun getGoodsPostList(item: GoodsPostPagingSource): Flow<PagingData<GoodsPostPreview>> {
         return Pager(
             config = PagingConfig(
                 pageSize = 15,
@@ -256,8 +236,8 @@ class MainViewModel @Inject constructor(
                 GoodsPostPagingSource(
                     api = api,
                     token = getTokenHeader()!!,
-                    distance=item.distance,
-                    areaId=item.areaId,
+                    distance = item.distance,
+                    areaId = item.areaId,
                 )
             }
         ).flow
@@ -295,31 +275,32 @@ class MainViewModel @Inject constructor(
             }
         }*/
     }
-    fun getGoodsPostContent(id:Long){
 
-        Log.d("aaaa","getGoodsPostContent called: authToken=${getTokenHeader()!!}, postId=$id")
+    fun getGoodsPostContent(id: Long) {
+
+        Log.d("aaaa", "getGoodsPostContent called: authToken=${getTokenHeader()!!}, postId=$id")
         viewModelScope.launch(Dispatchers.IO) {
-            try{
-                val response=api.getGoodsPostContent(authToken=getTokenHeader()!!,postId=id)
-                Log.d("aaaa",response.toString())
+            try {
+                val response = api.getGoodsPostContent(authToken = getTokenHeader()!!, postId = id)
+                Log.d("aaaa", response.toString())
 
-                withContext(Dispatchers.Main){
+                withContext(Dispatchers.Main) {
                     updateGoodsPostContent(response)
                     //isgettingNewPostContent=false
                     //isgettingNewPostList.value=false
                 }
-            }catch(e: Exception){
+            } catch (e: Exception) {
                 //isgettingNewPostContent=false
-                Log.d("aaaa",e.toString())
+                Log.d("aaaa", e.toString())
                 ///////////////////////////////
                 //updateGoodsPostContent(GoodsPostContentSample)
             }
         }
     }
 
-    fun getCommunityPostList(distance:Int,areaId: Int){
-        Log.d("aaaa","getCommunityPostList called:")
-        if(communityPostList.value.count!=0&&communityPostList.value.isLast){
+    fun getCommunityPostList(distance: Int, areaId: Int) {
+        Log.d("aaaa", "getCommunityPostList called:")
+        if (communityPostList.value.count != 0 && communityPostList.value.isLast) {
             //Log.d("aaaa","getCommunityPostList canceled:$isgettingNewPostList,${communityPostList.value.isLast}")
             return
         }
@@ -328,21 +309,22 @@ class MainViewModel @Inject constructor(
         isgettingNewPostList.value=false*/
 
         viewModelScope.launch(Dispatchers.IO) {
-            try{
-                val response=api.getCommunityPostList(
-                    authToken=getTokenHeader()!!,
+            try {
+                val response = api.getCommunityPostList(
+                    authToken = getTokenHeader()!!,
                     cur = communityPostList.value.cur,
                     seed = communityPostList.value.seed,
                     distance = distance,
                     areaId = areaId,
-                    count=communityPostList.value.count)
-                Log.d("aaaa",response.toString())
+                    count = communityPostList.value.count
+                )
+                Log.d("aaaa", response.toString())
 
-                withContext(Dispatchers.Main){
-                    updateCommunityPostList(response.copy(data = communityPostList.value.data+response.data))
+                withContext(Dispatchers.Main) {
+                    updateCommunityPostList(response.copy(data = communityPostList.value.data + response.data))
                     //isgettingNewPostList=false
                 }
-            }catch(e: Exception){
+            } catch (e: Exception) {
                 //isgettingNewPostList=false
                 Log.d("aaaa", "getCommunityPostList failed: $e")
                 /////////////////////////////////////////
@@ -351,24 +333,26 @@ class MainViewModel @Inject constructor(
         }
 
     }
-    suspend fun uploadImages(imageUris:List<Uri>,context:Context):postImagesResponse{
+
+    suspend fun uploadImages(imageUris: List<Uri>, context: Context): postImagesResponse {
         Log.d("aaaa", imageUris.toString())
         return api.postImages(prepareMultiPartList(imageUris, context))
     }
 
 
-    suspend fun wishToggle(id:Long,enable:Boolean) {
-        Log.d("wish","enable:$enable")
-        api.wishToggle(authToken=getTokenHeader()!!,id,enable)
+    suspend fun wishToggle(id: Long, enable: Boolean) {
+        Log.d("wish", "enable:$enable")
+        api.wishToggle(authToken = getTokenHeader()!!, id, enable)
     }
 
-    suspend fun submitPost(request: SubmitPostRequest){
-        api.submitPostRequest(authToken=getTokenHeader()!!,request)
+    suspend fun submitPost(request: SubmitPostRequest) {
+        api.submitPostRequest(authToken = getTokenHeader()!!, request)
     }
 
     suspend fun tryLogin(email: String, password: String): LoginResponse {
-            return api.loginRequest(LoginRequest(email, password))
+        return api.loginRequest(LoginRequest(email, password))
     }
+
     suspend fun trySignup(data: SignupRequest): SignupResponse {
         return api.signupRequest(data)
     }
@@ -385,18 +369,23 @@ class MainViewModel @Inject constructor(
         return api.socialSignUpRequest(data, "kakao")
     }
 
-    fun neededStoragePermissions():Array<String>{
+    fun neededStoragePermissions(): Array<String> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES,
+            arrayOf(
+                android.Manifest.permission.READ_MEDIA_IMAGES,
                 android.Manifest.permission.READ_MEDIA_VIDEO,
-                android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+                android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            )
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES,
-                android.Manifest.permission.READ_MEDIA_VIDEO,)
+            arrayOf(
+                android.Manifest.permission.READ_MEDIA_IMAGES,
+                android.Manifest.permission.READ_MEDIA_VIDEO,
+            )
         } else {
             arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE)
         }
     }
+
     fun prepareMultiPartList(imageUris: List<Uri>, context: Context): List<MultipartBody.Part> {
         val parts: MutableList<MultipartBody.Part> = ArrayList()
         imageUris.forEach { uri ->
@@ -420,6 +409,7 @@ class MainViewModel @Inject constructor(
         // Part 이름과 파일 이름으로 MultipartBody.Part 생성
         return MultipartBody.Part.createFormData(partName, file.name, requestFile)
     }
+
     suspend fun tryAreaSearch(query: String, cursor: Int): List<SimpleAreaData> {
         _areaDetails.value = api.areaSearch(query, cursor).areas;
         Log.d("VM", "${_areaDetails.value}")
@@ -429,21 +419,22 @@ class MainViewModel @Inject constructor(
     fun initializeApp() {
         enableCallFirstGoodsPostList()
     }
-    suspend fun getWishList(){
+
+    suspend fun getWishList() {
         _wishList.value = api.getWishList(getTokenHeader()!!)
     }
 
 
-    fun CanCallFirstGoodsPostList():Boolean{
+    fun CanCallFirstGoodsPostList(): Boolean {
         return prefRepository.getPref("CanCallGoodsPostList").toBoolean()
     }
 
     fun disableCallFirstGoodsPostList() {
-        prefRepository.setPref("CanCallGoodsPostList","false")
+        prefRepository.setPref("CanCallGoodsPostList", "false")
     }
 
     fun enableCallFirstGoodsPostList() {
-        prefRepository.setPref("CanCallGoodsPostList","true")
+        prefRepository.setPref("CanCallGoodsPostList", "true")
     }
 
     suspend fun getAreaName(id: Int): String {
@@ -451,9 +442,11 @@ class MainViewModel @Inject constructor(
         try {
             viewModelScope.launch {
                 name = api.getAreaName(id).name
-            } } catch (e: HttpException) {
+            }
+        } catch (e: HttpException) {
             name = " "
         }
+        Log.d("aaaa", "$id-> $name")
         return name
     }
 }

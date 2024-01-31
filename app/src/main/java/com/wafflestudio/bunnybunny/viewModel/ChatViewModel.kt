@@ -1,8 +1,6 @@
 package com.wafflestudio.bunnybunny.viewModel
 
-import android.content.SharedPreferences
 import android.util.Log
-import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wafflestudio.bunnybunny.data.example.ChatChannel
@@ -21,10 +19,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.WebSocket
 import retrofit2.HttpException
 import javax.inject.Inject
@@ -35,20 +35,28 @@ class ChatViewModel @Inject constructor(
     private val api: BunnyApi,
     private val webServicesProvider: WebServicesProvider,
     private val prefRepository: PrefRepository,
-    ): ViewModel() {
+) : ViewModel() {
 
     val recentMessages: StateFlow<String> = webServicesProvider.messageState
 
 
+    val latestMessage: StateFlow<List<Message>> = messageStorage.latestMessage
+        .map {
+            fromStringToRecentMessagesResponse(it).messages
+        }.stateIn(
+            viewModelScope, SharingStarted.Eagerly, emptyList()
+        )
 
     private val _messagesStateFlow = MutableStateFlow(emptyList<Message>())
     val messagesStateFlow: StateFlow<List<Message>> = _messagesStateFlow
 
-    private val _chatListResponse = MutableStateFlow(ChatListResponse(listOf<ChatChannel>(), listOf<ChatChannel>()))
-    val chatListResponse : StateFlow<ChatListResponse> = _chatListResponse.asStateFlow()
+    private val _chatListResponse =
+        MutableStateFlow(ChatListResponse(listOf<ChatChannel>(), listOf<ChatChannel>()))
+    val chatListResponse: StateFlow<ChatListResponse> = _chatListResponse.asStateFlow()
 
     private val _unreadMessagesStateFlow = MutableStateFlow(HashMap<Long, MutableList<Long>>())
-    val unreadMessagesStateFlow : StateFlow<HashMap<Long, MutableList<Long>>> = _unreadMessagesStateFlow.asStateFlow()
+    val unreadMessagesStateFlow: StateFlow<HashMap<Long, MutableList<Long>>> =
+        _unreadMessagesStateFlow.asStateFlow()
 
     private val _webSocketStateFlow = MutableStateFlow<WebSocket?>(null)
     val webSocketStateFlow: StateFlow<WebSocket?> = _webSocketStateFlow.asStateFlow()
@@ -75,19 +83,19 @@ class ChatViewModel @Inject constructor(
         _webSocketStateFlow.value = null
     }
 
-    suspend fun getRecentMessages(cur: Int) {
-            try {
-                val websocket = _webSocketStateFlow.value!!
-                webServicesProvider.sendRecentMessageRequest(websocket, 255)
-                delay(200)
-                val text = messageStorage.latestMessage.value
-                Log.d("ChatVieWModel", text)
-                val response = fromStringToNewUserMessageResponse(text)
-                Log.d("ChatVieWModel", "${_messagesStateFlow.value}")
-            } catch (e: Exception) {
-                // Handle the exception, log it, or take appropriate action
-                Log.e("ChatVieWModel", "Error getting recent messages: ${e.message}")
-            }
+    fun sendRecentMessagesFormattedStringRequest(cur: Int) {
+        try {
+            val websocket = _webSocketStateFlow.value!!
+            webServicesProvider.sendRecentMessageRequest(websocket, 255)
+//            delay(200)
+//            val text = messageStorage.latestMessage.value
+//            Log.d("ChatVieWModel", text)
+//            val response = fromStringToNewUserMessageResponse(text)
+//            Log.d("ChatVieWModel", "${_messagesStateFlow.value}")
+        } catch (e: Exception) {
+            // Handle the exception, log it, or take appropriate action
+            Log.e("ChatVieWModel", "Error getting recent messages: ${e.message}")
+        }
     }
 
     suspend fun getUserMessage() {
@@ -118,7 +126,7 @@ class ChatViewModel @Inject constructor(
         _webSocketStateFlow.value?.let { websocket ->
             webServicesProvider.sendTextMessage(websocket, text)
             delay(200)
-            getRecentMessages(255)
+            sendRecentMessagesFormattedStringRequest(255)
         }
     }
 
@@ -142,20 +150,20 @@ class ChatViewModel @Inject constructor(
         api.makeChatRoomRequest(getTokenHeader()!!, CreateChatRoomRequest(postId))
     }
 
-    fun getTokenHeader():String?{
+    fun getTokenHeader(): String? {
         //Log.d("aaaa", "tag:$accessToken")
         return prefRepository.getPref("token")?.let {
             "Bearer $it"
         } ?: ""
     }
 
-    fun getOriginalToken():String?{
+    fun getOriginalToken(): String? {
         //Log.d("aaaa", "tag:$accessToken")
         return prefRepository.getPref("token")
     }
 
     fun setToken(token: String) {
-        prefRepository.setPref("token",token)
+        prefRepository.setPref("token", token)
     }
 
     fun getRefAreaId(): List<Int> {
@@ -169,7 +177,7 @@ class ChatViewModel @Inject constructor(
         refAreaId.forEach {
             builder.append("$it ")
         }
-        Log.d("aaaaa",builder.toString())
-        prefRepository.setPref("refAreaId",builder.toString())
+        Log.d("aaaaa", builder.toString())
+        prefRepository.setPref("refAreaId", builder.toString())
     }
 }

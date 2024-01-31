@@ -1,8 +1,10 @@
 package com.wafflestudio.bunnybunny.components.compose
 
 import android.util.Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -16,12 +18,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wafflestudio.bunnybunny.viewModel.MainViewModel
 
 
 @Composable
-fun CurrentAreaWithDropDownMenu(viewModel: MainViewModel) {
+fun RowScope.CurrentAreaWithDropDownMenu(viewModel: MainViewModel) {
 
     var isDropDownMenuExpanded by remember { mutableStateOf (false)}
     val currentRefAreaId by viewModel.currentRefAreaId.collectAsState()
@@ -39,7 +42,7 @@ fun CurrentAreaWithDropDownMenu(viewModel: MainViewModel) {
 
     Column (modifier = Modifier.clickable {
         isDropDownMenuExpanded = true
-    }) {
+    }.weight(1f).background(Color.Yellow)) {
         Text(modifier = Modifier
             ,
             text = firstAreaName)

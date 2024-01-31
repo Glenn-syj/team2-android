@@ -29,7 +29,6 @@ class BunnyWebSocketListener @Inject constructor (
         super.onMessage(webSocket, text)
         Log.d(TAG, "onMessage: $text")
         messageStorage.updateLatestMessage(text)
-
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
